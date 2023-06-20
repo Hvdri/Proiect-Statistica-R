@@ -93,7 +93,47 @@ plot_graphics(mass_function)
 # dintre fiecare valoare și media ridicate la puterea k, ponderată cu
 # probabilitatea corespunzătoare.
 
-calculeaza_momente <- function(functie) {
+calculeaza_momente_masa  <- function(functie) {
+  if (!is.numeric(functie)) {
+    stop("Funcția de masă trebuie să fie de tip numeric")
+  }
+  
+  rezultate <- c()
+
+  # Calcularea mediei
+  medie <- sum(functie * seq_along(functie))
+  rezultate <- c(rezultate, medie)
+
+  # Calcularea dispersiei
+  dispersie <- sum(functie * (seq_along(functie) - medie)^2)
+  rezultate <- c(rezultate, dispersie)
+
+  # Calcularea momentelor inițiale și centrate până la ordinul 4
+  for (i in 1:4) {
+    moment_initial <- sum(functie * seq_along(functie)^i)
+    moment_centrat <- sum(functie * (seq_along(functie) - medie)^i)
+
+    # Verificăm dacă momentul inițial există
+    if (!is.nan(moment_initial)) {
+      rezultate <- c(rezultate, moment_initial)
+    } else {
+      # Dacă momentul inițial nu există, afișăm un mesaj corespunzător
+      rezultate <- c(rezultate, paste("Momentul inițial de ordin", i, "nu există"))
+    }
+
+    # Verificăm dacă momentul centrat există
+    if (!is.nan(moment_centrat)) {
+      rezultate <- c(rezultate, moment_centrat)
+    } else {
+      # Dacă momentul centrat nu există, afișăm un mesaj corespunzător
+      rezultate <- c(rezultate, paste("Momentul centrat de ordin", i, "nu există"))
+    }
+  }
+
+  return(rezultate)
+}
+
+calculeaza_momente_densitate <- function(functie) {
   rezultate <- c()
 
   # Calcularea mediei
@@ -129,7 +169,7 @@ calculeaza_momente <- function(functie) {
   return(rezultate)
 }
 
-calculeaza_momente(density_function)
+calculeaza_momente_masa(mass_function)
 
 ##### 5.) Calculul mediei și dispersiei unei variabile aleatoare g(X):
 
@@ -167,57 +207,131 @@ print(paste(calculeaza_medie_dispersie(f, g)))
 # realiza calculele corespunzătoare.
 
 # Calculul probabilității condiționate
-calculate_conditional_probability <- function(f_joint, f_marginal, event) {
-  # event este un vector care specifică valorile
-  # evenimentului de forma c(X1=x1, X2=x2, ...)
-  return(f_joint(event) / f_marginal(event[-1]))
-}
+calculeaza_probabilitati <- function(P_X, P_Y_given_X = NULL, P_X_given_Y = NULL) {
+  rezultate <- list()
 
-# Calculul probabilității marginale
-calculate_marginal_probability <- function(f_joint, variables_to_sum_out, values_to_sum_out) {
-  # variables_to_sum_out este un vector cu variabilele care trebuie eliminate
-  # values_to_sum_out este un vector cu valorile corespunzătoare variabilelor
-  # de eliminat
+  # Calcularea probabilității P(X)
+  P_X_valoare <- function(x) {
+    return(P_X[x])
+  }
+  rezultate$P_X <- P_X_valoare
 
-  indices_to_keep <- !variables_to_sum_out %in% names(values_to_sum_out)
-  event <- c(values_to_sum_out, rep(0, length(variables_to_sum_out) - length(values_to_sum_out)))
-  sum_over <- variables_to_sum_out[indices_to_keep]
-  probabilities <- numeric()
-
-  for (i in seq_along(sum_over)) {
-    event[sum_over[i]] <- 0
-    probabilities <- c(probabilities, f_joint(event))
+  # Calcularea probabilității P(Y|X)
+  if (!is.null(P_Y_given_X)) {
+    P_Y_given_X_valoare <- function(y, x) {
+      return(P_Y_given_X[y, x] / P_X[x])
+    }
+    rezultate$P_Y_given_X <- P_Y_given_X_valoare
   }
 
+  # Calcularea probabilității P(X|Y)
+  if (!is.null(P_X_given_Y)) {
+    P_X_given_Y_valoare <- function(x, y) {
+      return(P_X_given_Y[x, y] / sum(P_X_given_Y[, y]))
+    }
+    rezultate$P_X_given_Y <- P_X_given_Y_valoare
+  }
 
-  return(sum(probabilities))
+  return(rezultate)
 }
+
+# Exemplu 1: Probabilități marginale
+P_X <- c(0.3, 0.7)  # P(X = 1) = 0.3, P(X = 2) = 0.7
+
+rezultate <- calculeaza_probabilitati(P_X)
+
+# Calcularea și afișarea probabilității P(X = 1)
+print(rezultate$P_X(1))
+
+# Calcularea și afișarea probabilității P(X = 2)
+print(rezultate$P_X(2))
+
+
+# Exemplu 2: Probabilități condiționate
+P_Y_given_X <- matrix(c(0.2, 0.8, 0.6, 0.4), nrow = 2)  # P(Y = 1 | X = 1) = 0.2, P(Y = 2 | X = 1) = 0.8, P(Y = 1 | X = 2) = 0.6, P(Y = 2 | X = 2) = 0.4
+
+rezultate <- calculeaza_probabilitati(P_X, P_Y_given_X = P_Y_given_X)
+
+# Calcularea și afișarea probabilității P(Y = 1 | X = 1)
+print(rezultate$P_Y_given_X(1, 1))
+
+# Calcularea și afișarea probabilității P(Y = 2 | X = 2)
+print(rezultate$P_Y_given_X(2, 2))
+
+
+# Exemplu 3: Probabilități condiționate invers
+P_X_given_Y <- matrix(c(0.4, 0.6, 0.7, 0.3), nrow = 2)  # P(X = 1 | Y = 1) = 0.4, P(X = 2 | Y = 1) = 0.6, P(X = 1 | Y = 2) = 0.7, P(X = 2 | Y = 2) = 0.3
+
+rezultate <- calculeaza_probabilitati(P_X, P_X_given_Y = P_X_given_Y)
+
+# Calcularea și afișarea probabilității P(X = 1 | Y = 1)
+print(rezultate$P_X_given_Y(1, 1))
+
+# Calcularea și afișarea probabilității P(X = 2 | Y = 2)
+print(rezultate$P_X_given_Y(2, 2))
+
+
+# Exemplu 4: Utilizarea tuturor tipurilor de probabilități
+P_X <- c(0.3, 0.7)
+P_Y_given_X <- matrix(c(0.2, 0.8, 0.6, 0.4), nrow = 2)
+P_X_given_Y <- matrix(c(0.4, 0.6, 0.7, 0.3), nrow = 2)
+
+rezultate <- calculeaza_probabilitati(P_X, P_Y_given_X = P_Y_given_X, P_X_given_Y = P_X_given_Y)
+
+# Calcularea și afișarea probabilității P(X = 2)
+print(rezultate$P_X(2))
+
+# Calcularea și afișarea probabilității P(Y = 1 | X = 1)
+print(rezultate$P_Y_given_X(1, 1))
+
+# Calcularea și afișarea probabilității P(X = 2 | Y = 2)
+print(rezultate$P_X_given_Y(2, 2))
+
 
 ##### 7.) Calculul covarianței și coeficientului de corelație
 # pentru două variabile aleatoare:
 
-#     Pentru a calcula covarianța, vom utiliza definiția acesteia
-# ca suma produselor diferențelor dintre valorile fiecărei variabile
-# și media lor, ponderate cu probabilitățile corespunzătoare.
+calculeaza_cov_corelatie <- function(P_XY, P_X, P_Y) {
+  # Calcularea mediei variabilei X
+  media_X <- sum(P_X * seq_along(P_X))
 
-#     Pentru a calcula coeficientul de corelație,
-# vom utiliza formula care implică covarianța și deviațiile
-# standard ale celor două variabile.
+  # Calcularea mediei variabilei Y
+  media_Y <- sum(P_Y * seq_along(P_Y))
 
-# Calculul covarianței
-calculate_covariance <- function(x1, x2, probs) {
-  mean_x1 <- calculate_mean(x1, probs)
-  mean_x2 <- calculate_mean(x2, probs)
-  return(sum((x1 - mean_x1) * (x2 - mean_x2) * probs))
+  # Calcularea covarianței
+  covarianța <- sum((seq_along(P_XY) - media_X) * (seq_along(P_XY) - media_Y) * P_XY)
+
+  # Calcularea deviației standard a lui X și Y
+  deviatie_X <- sqrt(sum(((seq_along(P_X) - media_X) ^ 2) * P_X))
+  deviatie_Y <- sqrt(sum(((seq_along(P_Y) - media_Y) ^ 2) * P_Y))
+
+  # Calcularea coeficientului de corelație
+  corelatie <- covarianța / (deviatie_X * deviatie_Y)
+
+  rezultate <- list(
+    covarianța = covarianța,
+    corelatie = corelatie
+  )
+
+  return(rezultate)
 }
 
-# Calculul coeficientului de corelație
-calculate_correlation <- function(x1, x2, probs) {
-  covariance <- calculate_covariance(x1, x2, probs)
-  sd_x1 <- sqrt(calculate_variance(x1, probs))
-  sd_x2 <- sqrt(calculate_variance(x2, probs))
-  return(covariance / (sd_x1 * sd_x2))
-}
+# Funcția de masă/densitatea comună a celor două variabile aleatoare X și Y
+P_XY <- matrix(c(0.1, 0.2, 0.3, 0.4), nrow = 2)  # Exemplu fictiv
+
+# Funcția de masă/densitatea marginală a variabilei X
+P_X <- c(0.3, 0.7)
+
+# Funcția de masă/densitatea marginală a variabilei Y
+P_Y <- c(0.4, 0.6)
+
+# Calcularea covarianței și coeficientului de corelație
+rezultate <- calculeaza_cov_corelatie(P_XY, P_X, P_Y)
+
+# Afișarea rezultatelor
+print(rezultate$covarianța)
+print(rezultate$corelatie)
+
 
 ##### 8.) Construirea funcțiilor de masă/densităților marginale și condiționate:
 
@@ -233,24 +347,42 @@ calculate_correlation <- function(x1, x2, probs) {
 # de masă/densitatea marginală a variabilei condiționate.
 
 # Construirea funcției de masă marginală
-build_marginal_pmf <- function(f_joint, variables_to_keep) {
-  return(function(event) {
-    event_marginal <- event[variables_to_keep]
-    return(f_joint(event_marginal))
-  })
+calculeaza_distributii <- function(f_comuna, valoare_X = NULL, valoare_Y = NULL) {
+  rezultate <- list()
+
+  # Calcularea funcțiilor de masă/densității marginale a variabilei X
+  f_marginal_X <- apply(f_comuna, 1, sum)
+  rezultate$marginal_X <- f_marginal_X
+
+  # Calcularea funcțiilor de masă/densității marginale a variabilei Y
+  f_marginal_Y <- apply(f_comuna, 2, sum)
+  rezultate$marginal_Y <- f_marginal_Y
+
+  # Verificarea și calcularea funcțiilor de masă/densității condiționate
+  if (!is.null(valoare_X)) {
+    if (valoare_X < 1 || valoare_X > nrow(f_comuna)) {
+      stop("Valoarea specificată pentru X este invalidă")
+    }
+    f_conditional <- f_comuna[valoare_X, ] / sum(f_comuna[valoare_X, ])
+    rezultate$conditional_Y_given_X <- f_conditional
+  }
+
+  if (!is.null(valoare_Y)) {
+    if (valoare_Y < 1 || valoare_Y > ncol(f_comuna)) {
+      stop("Valoarea specificată pentru Y este invalidă")
+    }
+    f_conditional <- f_comuna[, valoare_Y] / sum(f_comuna[, valoare_Y])
+    rezultate$conditional_X_given_Y <- f_conditional
+  }
+
+  return(rezultate)
 }
 
-# Construirea funcției de masă condiționată
-build_conditional_pmf <- function(f_joint, f_marginal, variable_to_condition, value_to_condition) {
-  return(function(event) {
-    event_conditional <- c(event, value_to_condition)
-    return(f_joint(event_conditional) / f_marginal(event_conditional[-1]))
-  })
-}
+f_comuna <- matrix(c(0.1, 0.2, 0.3, 0.4), nrow = 2)
+calculeaza_distributii(f_comuna, valoare_X = 1, valoare_Y = 2)
 
 ##### 9.) Verificarea dacă un set de valori este extrase dintr-o anumită repartiție:
 
-solve_sets <- function() {
   # Seturile de valori
   set_a <- c(7, 4, 2, 11, 2, 1, 2, 1, 6, 6, 0, 1, 3, 9, 7, 0, 1, 14, 0, 5, 1, 5, 2, 4, 3, 1, 0, 0, 26, 1)
   set_b <- c(-1.91, -0.97, 4.59, 2.19, -0.86, -0.74, -0.60, -1.29, 0.93, 1.42, 2.14, -2.01, 2.60, 1.45, 2.60, -3.32, -3.62, 3.09, 2.91, 3.60, -0.83, -0.27, 1.82, -1.38, -1.76, 1.43, -0.59, -1.34, 2.07, 1.02)
@@ -259,179 +391,151 @@ solve_sets <- function() {
   set_e <- c(11, 11, 10, 10, 10, 6, 5, 9, 11, 10, 14, 8, 11, 6, 13, 9, 14, 16, 14, 10, 7, 7, 11, 12, 9, 5, 12, 15, 9, 12)
 
   # 9.1 Histograma, mediana, media și deviația standard
-  hist(set_a, main = "Histograma setului A")
-  median_a <- median(set_a)
-  mean_a <- mean(set_a)
-  sd_a <- sd(set_a)
-  print(paste("Mediana setului A:", median_a))
-  print(paste("Media setului A:", mean_a))
-  print(paste("Deviația standard a setului A:", sd_a))
+analiza_set_valori <- function(set_valori) {
+  # Histograma valorilor
+  hist(set_valori, breaks = "FD", main = "Histograma - Setul de valori", xlab = "Valoare", ylab = "Frecvență", col = "gray", border = "black")
+  
+  # Calculul medianei, mediei și deviației standard
+  median_val <- median(set_valori)
+  mean_val <- mean(set_valori)
+  dev_stdev <- sd(set_valori)
+  
+  # Afisarea medianei, mediei si deviatiei standard pe desenul histogramelor
+  abline(v = median_val, col = "red", lwd = 3, lty = 2)
+  abline(v = mean_val, col = "blue", lwd = 3, lty = 2)
+  text(median_val, par("usr")[4], round(median_val, 2), pos = 4, col = "red", offset = 0.2)
+  text(mean_val, par("usr")[4], round(mean_val, 2), pos = 2, col = "blue", offset = 0.2)
+  text(par("usr")[2], par("usr")[4], paste("Deviația standardă:", round(dev_stdev, 2)), pos = 1, col = "black", offset = 0.2)
+}
 
-  hist(set_b, main = "Histograma setului B")
-  median_b <- median(set_b)
-  mean_b <- mean(set_b)
-  sd_b <- sd(set_b)
-  print(paste("Mediana setului B:", median_b))
-  print(paste("Media setului B:", mean_b))
-  print(paste("Deviația standard a setului B:", sd_b))
-
-  hist(set_c, main = "Histograma setului C")
-  median_c <- median(set_c)
-  mean_c <- mean(set_c)
-  sd_c <- sd(set_c)
-  print(paste("Mediana setului C:", median_c))
-  print(paste("Media setului C:", mean_c))
-  print(paste("Deviația standard a setului C:", sd_c))
-
-  hist(set_d, main = "Histograma setului D")
-  median_d <- median(set_d)
-  mean_d <- mean(set_d)
-  sd_d <- sd(set_d)
-  print(paste("Mediana setului D:", median_d))
-  print(paste("Media setului D:", mean_d))
-  print(paste("Deviația standard a setului D:", sd_d))
-
-  hist(set_e, main = "Histograma setului E")
-  median_e <- median(set_e)
-  mean_e <- mean(set_e)
-  sd_e <- sd(set_e)
-  print(paste("Mediana setului E:", median_e))
-  print(paste("Media setului E:", mean_e))
-  print(paste("Deviația standard a setului E:", sd_e))
+analiza_set_valori(set_c)
 
   # 9.2 Identificarea repartiției
 
-  # Testul Shapiro-Wilk pentru fiecare set de valori
-  shapiro_test_a <- shapiro.test(set_a)
-  shapiro_test_b <- shapiro.test(set_b)
-  shapiro_test_c <- shapiro.test(set_c)
-  shapiro_test_d <- shapiro.test(set_d)
-  shapiro_test_e <- shapiro.test(set_e)
 
-  # Afișarea rezultatelor testului Shapiro-Wilk
-  print("Rezultatele testului Shapiro-Wilk pentru setul A:")
-  print(shapiro_test_a)
 
-  print("Rezultatele testului Shapiro-Wilk pentru setul B:")
-  print(shapiro_test_b)
+library(MASS)
+library(fitdistrplus)
 
-  print("Rezultatele testului Shapiro-Wilk pentru setul C:")
-  print(shapiro_test_c)
+identifica_distributie <- function(data) {
+  # Fit Normal distribution
+  norm_fit <- fitdistr(data[data > 0], "normal")
+  
+  # Fit Exponential distribution
+  exp_fit <- fitdistr(data[data > 0], "exponential")
+  
+  # Fit Poisson distribution
+  pois_fit <- fitdistr(data[data > 0], "poisson")
 
-  print("Rezultatele testului Shapiro-Wilk pentru setul D:")
-  print(shapiro_test_d)
+  #Fit Gamma distribution
+  gamma_fit <- fitdistr(data[data > 0], "gamma")
+  
+  # Calculate AIC values for each distribution
+  norm_aic <- AIC(norm_fit)
+  exp_aic <- AIC(exp_fit)
+  pois_aic <- AIC(pois_fit)
+  gamma_aic <- AIC(gamma_fit)
+  
+  # Identify the distribution with the lowest AIC
+  if (norm_aic < exp_aic && norm_aic < pois_aic && norm_aic < gamma_aic) {
+    return("Normal")
+  } else if (exp_aic < norm_aic && exp_aic < pois_aic && exp_aic < gamma_aic) {
+    return("Exponential")
+  } else if( gamma_aic < norm_aic && gamma_aic < pois_aic && gamma_aic < exp_aic) {
+    return("Gamma")
+  } else {
+    return("Poisson")
+  }
+}
 
-  print("Rezultatele testului Shapiro-Wilk pentru setul E:")
-  print(shapiro_test_e)
-
-  # Graficul Q-Q pentru fiecare set de valori
-  qqnorm(set_a)
-  qqline(set_a)
-  qqnorm(set_b)
-  qqline(set_b)
-  qqnorm(set_c)
-  qqline(set_c)
-  qqnorm(set_d)
-  qqline(set_d)
-  qqnorm(set_e)
-  qqline(set_e)
-
+identifica_distributie(set_e)
 
   # 9.3 Estimarea parametrilor în baza celor 5 eșantioane
+
   estimate_parameters <- function(data) {
-    mean_estimate <- mean(data)
-    sd_estimate <- sd(data)
-    return(list(mean = mean_estimate, sd = sd_estimate))
-  }
+  # Estimarea prin metoda verosimilității maxime (MLE)
+  mle_fit <- fitdist(data, "norm", method = "mle")
+  mle_mean <- mle_fit$estimate[1]
+  mle_sd <- mle_fit$estimate[2]
+  
+  # Estimarea prin metoda momentelor
+  moment_mean <- mean(data)
+  moment_sd <- sd(data)
+  
+  # Returnarea rezultatelor
+  result <- list(
+    MLE_mean = mle_mean,
+    MLE_sd = mle_sd,
+    Moment_mean = moment_mean,
+    Moment_sd = moment_sd
+  )
+  
+  return(result)
+}
 
-  # Estimarea parametrilor pentru fiecare set de valori
-  params_a <- estimate_parameters(set_a)
-  params_b <- estimate_parameters(set_b)
-  params_c <- estimate_parameters(set_c)
-  params_d <- estimate_parameters(set_d)
-  params_e <- estimate_parameters(set_e)
-
-  # Afișarea rezultatelor
-  print("Estimările parametrilor pentru setul A:")
-  print(params_a)
-
-  print("Estimările parametrilor pentru setul B:")
-  print(params_b)
-
-  print("Estimările parametrilor pentru setul C:")
-  print(params_c)
-
-  print("Estimările parametrilor pentru setul D:")
-  print(params_d)
-
-  print("Estimările parametrilor pentru setul E:")
-  print(params_e)
+estimate_parameters(set_a)
 
   # 9.4 Verificarea verosimilității extragerii dintr-o repartiție normală
-  # (nu este implementată în codul de mai sus)
+
+  perform_normality_tests <- function(data) {
+  # Testul Shapiro-Wilk
+  shapiro_test <- shapiro.test(data)
+  pValue <- shapiro_test$p.value
+  
+  if (pValue > 0.05) {
+    print("Distribuția este normală")
+  } else {
+    print("Distribuția nu este normală")
+  }
+  return(shapiro_test)
 }
+
+perform_normality_tests(set_b)
+
 
 # Apelarea funcției pentru rezolvarea exercițiului
-solve_sets()
 
 ##### 10.)
-
-solve_questions <- function() {
-  # Citirea setului de valori de la tastatura
-  values <- readline(prompt = "Introduceti setul de valori (separate prin spatiu): ")
-  values <- strsplit(values, " ")[[1]]
-
-  # Convertirea valorilor in tipul numeric
-  values <- as.numeric(values)
-
-  # 9.1 Histograma, mediana, media si deviatia standard
-  hist(values, main = "Histograma setului de valori")
-  median_val <- median(values)
-  mean_val <- mean(values)
-  sd_val <- sd(values)
-  print(paste("Mediana setului de valori:", median_val))
-  print(paste("Media setului de valori:", mean_val))
-  print(paste("Deviatia standard a setului de valori:", sd_val))
-
-  # 9.2 Identificarea repartitiei
-
-
-  # NU MERGE!!!   library(MASS)
-
-  # fit_distribution <- function(data) {
-  #   dist_names <- c("normal", "exponential", "gamma", "lognormal", "weibull")
-  #   fit_results <- list()
-
-  #   for (dist_name in dist_names) {
-  #     fit <- fitdistr(data, dist_name)
-  #     fit_results[[dist_name]] <- fit
-  #   }
-
-  #   return(fit_results)
-  # }
-
-  # # Apelarea functiei pentru setul de valori introdus de utilizator
-  # fit_results <- fit_distribution(values)
-
-  # # Afisarea rezultatelor
-  # for (dist_name in names(fit_results)) {
-  #   print(paste("Repartitia", dist_name))
-  #   print(fit_results[[dist_name]])
-  # }
-
-  # 9.3 Estimarea parametrilor
-  estimate_parameters <- function(data) {
-    mean_estimate <- mean(data)
-    sd_estimate <- sd(data)
-    return(list(mean = mean_estimate, sd = sd_estimate))
+analiza_set_personalizat <- function() {
+  # Citirea setului de valori de la tastatură
+  set_valori <- readline(prompt = "Introduceți setul de valori (separate prin virgulă): ")
+  set_valori <- as.numeric(strsplit(set_valori, ",")[[1]])
+  
+  # Meniu interactiv
+  while (TRUE) {
+    cat("\nAlegeți opțiunea dorită:")
+    cat("\n1. Histograma, mediana, media și deviația standard")
+    cat("\n2. Identificarea repartiției")
+    cat("\n3. Estimarea parametrilor în baza celor 5 eșantioane")
+    cat("\n4. Verificarea verosimilității extragerii dintr-o repartiție normală")
+    cat("\n0. Ieșire\n")
+    
+    optiune <- readline(prompt = "Opțiune: ")
+    
+    if (optiune == "0") {
+      break
+    }
+    
+    if (optiune == "1") {
+      # 9.1 Histograma, mediana, media și deviația standard
+      analiza_set_valori(set_valori)
+    } else if (optiune == "2") {
+      # 9.2 Identificarea repartiției
+      distributie_identificata <- identifica_distributie(set_valori)
+      print(paste("Repartiția identificată:", distributie_identificata))
+    } else if (optiune == "3") {
+      # 9.3 Estimarea parametrilor în baza celor 5 eșantioane
+      estimare_parametri <- estimate_parameters(set_valori)
+      print("Estimarea parametrilor:")
+      print(paste("Metoda verosimilității maxime (MLE) - Mean:", estimare_parametri$MLE_mean, "SD:", estimare_parametri$MLE_sd))
+      print(paste("Metoda momentelor - Mean:", estimare_parametri$Moment_mean, "SD:", estimare_parametri$Moment_sd))
+    } else if (optiune == "4") {
+      # 9.4 Verificarea verosimilității extragerii dintr-o repartiție normală
+      perform_normality_tests(set_valori)
+    } else {
+      cat("Opțiune invalidă! Vă rugăm să alegeți o opțiune validă.\n")
+    }
   }
-
-  params <- estimate_parameters(values)
-  print("Estimarile parametrilor:")
-  print(params)
-
-  # 9.4 Verificarea verosimilitatii extragerii dintr-o repartitie normala - se poate adauga cod aici pentru a verifica verosimilitatea
 }
 
-# Apelarea functiei
-solve_questions()
+analiza_set_personalizat()
